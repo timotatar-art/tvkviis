@@ -18,8 +18,9 @@ import androidx.core.view.WindowInsetsControllerCompat
 
 class MainActivity : AppCompatActivity() {
 
-    // TODO: aseta siia oma backendi TV-kuva aadress (peab olema https).
-    private val tvDisplayUrl = "https://your-quiz-domain.example/tv"
+    // Päris backend: Cloudflare Worker + Durable Object mänguserver.
+    // /tv loob iga kord uue mänguruumi ja kuvab TV ekraani.
+    private val tvDisplayUrl = "https://quiz-backend.timo-tatar.workers.dev/tv"
 
     private lateinit var webView: WebView
 
