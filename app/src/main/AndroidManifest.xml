@@ -22,11 +22,6 @@
         android:hardwareAccelerated="true"
         android:usesCleartextTraffic="false">
 
-        <!--
-          usesCleartextTraffic="false" eeldab, et tvDisplayUrl MainActivity.kt failis
-          kasutab https:// - Android TV/WebView blokeerib vaikimisi http:// liikluse.
-        -->
-
         <activity
             android:name=".MainActivity"
             android:exported="true"
