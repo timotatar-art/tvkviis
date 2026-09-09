@@ -16,7 +16,22 @@ android {
         versionName = "1.0"
     }
 
+    signingConfigs {
+        getByName("debug") {
+            // Püsiv, repos hoitav debug-võti (app/debug.keystore).
+            // Kriitiline: kui iga CI ehitus genereeriks oma võtme, ei saaks Android
+            // kunagi üle installida — "pakett on olemasoleva paketiga vastuolus".
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             isMinifyEnabled = false
         }
