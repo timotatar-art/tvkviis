@@ -12,8 +12,15 @@ android {
         // minSdk 21 katab kogu Android TV / Google TV seadmepargi
         minSdk = 21
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        // CI annab ehitusnumbri (GitHub Actions run_number) läbi -PappVersionCode.
+        // See läheb otse Android versionCode'iks, nii saab rakendus ise ära tunda,
+        // kas serveris on uuem ehitus kui paigaldatud oma.
+        versionCode = (project.findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 1
+        versionName = (project.findProperty("appVersionCode") as String?) ?: "1.0"
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     signingConfigs {
