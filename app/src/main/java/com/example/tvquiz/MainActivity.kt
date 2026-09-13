@@ -2,11 +2,7 @@ package com.example.tvquiz
 
 import android.annotation.SuppressLint
 import android.app.AlertDialog
-import android.app.DownloadManager
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -41,17 +37,6 @@ class MainActivity : AppCompatActivity() {
     private val versionCheckUrl = "https://quiz-backend.timo-tatar.workers.dev/app-version"
 
     private lateinit var webView: WebView
-    private var downloadId: Long = -1L
-    private var downloadReceiverRegistered = false
-
-    private val downloadReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
-            if (id == downloadId) {
-                installDownloadedApk()
-            }
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -157,41 +142,65 @@ class MainActivity : AppCompatActivity() {
             startActivity(intent)
             return
         }
-        downloadApk(apkUrl)
+        downloadApkDirect(apkUrl)
     }
 
-    private fun downloadApk(apkUrl: String) {
-        if (!downloadReceiverRegistered) {
-            val filter = IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                registerReceiver(downloadReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-            } else {
-                @Suppress("UnspecifiedRegisterReceiverFlag")
-                registerReceiver(downloadReceiver, filter)
-            }
-            downloadReceiverRegistered = true
-        }
-
-        val request = DownloadManager.Request(Uri.parse(apkUrl))
-            .setTitle("LuVu Quiz uuendus")
-            .setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, "luvu-update.apk")
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-
-        val manager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        downloadId = manager.enqueue(request)
+    // Laeb APK-i otse (ilma süsteemi DownloadManager'i ja BroadcastReceiverita),
+    // kuna paljudel Google TV seadmetel ei tööta DownloadManager'i taustateavitus
+    // usaldusväärselt. Kõik toimub siin, ühes kontrollitavas voos, koos selgete
+    // veateadetega, kui midagi ebaõnnestub.
+    private fun downloadApkDirect(apkUrl: String) {
         Toast.makeText(this, "Laadin uuendust alla...", Toast.LENGTH_SHORT).show()
+        Thread {
+            try {
+                val connection = URL(apkUrl).openConnection() as HttpURLConnection
+                connection.connectTimeout = 15000
+                connection.readTimeout = 30000
+                connection.instanceFollowRedirects = true
+                connection.connect()
+
+                if (connection.responseCode !in 200..299) {
+                    throw Exception("Server vastas koodiga ${connection.responseCode}")
+                }
+
+                val destFile = File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "luvu-update.apk")
+                destFile.parentFile?.mkdirs()
+                connection.inputStream.use { input ->
+                    destFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                connection.disconnect()
+
+                Handler(Looper.getMainLooper()).post {
+                    Toast.makeText(this, "Allalaadimine valmis, avan installi...", Toast.LENGTH_SHORT).show()
+                    installDownloadedApk()
+                }
+            } catch (e: Exception) {
+                Handler(Looper.getMainLooper()).post {
+                    Toast.makeText(this, "Allalaadimine ebaõnnestus: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }.start()
     }
 
     private fun installDownloadedApk() {
         val destFile = File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "luvu-update.apk")
-        if (!destFile.exists()) return
+        if (!destFile.exists()) {
+            Toast.makeText(this, "Allalaaditud faili ei leitud.", Toast.LENGTH_LONG).show()
+            return
+        }
 
         val apkUri = FileProvider.getUriForFile(this, "$packageName.fileprovider", destFile)
         val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(apkUri, "application/vnd.android.package-archive")
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
         }
-        startActivity(intent)
+        try {
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Ei õnnestunud installit avada: ${e.message}", Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
@@ -203,9 +212,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        if (downloadReceiverRegistered) {
-            unregisterReceiver(downloadReceiver)
-        }
         webView.destroy()
         super.onDestroy()
     }
