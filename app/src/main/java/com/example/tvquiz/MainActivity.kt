@@ -139,7 +139,7 @@ class MainActivity : AppCompatActivity() {
         if (isFinishing) return
         AlertDialog.Builder(this)
             .setTitle("Uuendus saadaval")
-            .setMessage("LuVu game'ist on saadaval uuem versioon (#$versionCode). Kas soovid selle kohe alla laadida ja installida?")
+            .setMessage("LuVu Quiz'ist on saadaval uuem versioon (#$versionCode). Kas soovid selle kohe alla laadida ja installida?")
             .setPositiveButton("Installi") { _, _ -> startUpdateDownload(apkUrl) }
             .setNegativeButton("Hiljem", null)
             .setCancelable(true)
@@ -173,7 +173,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val request = DownloadManager.Request(Uri.parse(apkUrl))
-            .setTitle("LuVu game uuendus")
+            .setTitle("LuVu Quiz uuendus")
             .setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, "luvu-update.apk")
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
 
